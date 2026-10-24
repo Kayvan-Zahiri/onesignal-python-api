@@ -3,6 +3,8 @@
 import collections
 import time
 import uuid
+from datetime import timezone
+from email.utils import parsedate_to_datetime
 
 import urllib3
 
@@ -43,7 +45,13 @@ def _retry_delay(headers, attempt, base_delay):
         try:
             return max(float(retry_after), 0.0)
         except (TypeError, ValueError):
-            pass
+            try:
+                retry_date = parsedate_to_datetime(retry_after)
+                if retry_date.tzinfo is None:
+                    retry_date = retry_date.replace(tzinfo=timezone.utc)
+                return max(retry_date.timestamp() - time.time(), 0.0)
+            except (TypeError, ValueError, OverflowError):
+                pass
     return base_delay * (2 ** attempt)
 
 
